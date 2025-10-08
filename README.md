@@ -4423,3 +4423,1632 @@ Ana odaklar:
 Kritik öneri:
 
 > Backend uygulamalarında “GC pause time” ve “allocation rate” her zaman izlenmeli.
+
+---
+
+### 241. Spring Transactional Isolation Level Nedir? Seviyeleri Nelerdir?
+
+**Transactional Isolation Level**, birden fazla işlemin aynı veritabanı kayıtları üzerinde çalışırken veri bütünlüğünü korumak için kullanılan mekanizmadır.
+
+Spring, JPA veya JDBC üzerinden bu seviyeleri doğrudan destekler:
+
+- **READ_UNCOMMITTED:** Diğer transaction’ların henüz commit edilmemiş verilerini okuyabilir → _Dirty Read riski vardır._
+    
+- **READ_COMMITTED:** Sadece commit edilmiş veriler okunur → _Non-Repeatable Read mümkündür._
+    
+- **REPEATABLE_READ:** Aynı transaction içinde aynı sorgular her seferinde aynı sonucu döner → _Phantom Read mümkündür._
+    
+- **SERIALIZABLE:** En yüksek seviye. Transaction’lar sıralı yürütülür, veri bütünlüğü maksimumdur ama performans düşer.
+    
+
+Örnek:
+
+```java
+@Transactional(isolation = Isolation.REPEATABLE_READ)
+public void processPayment() {
+    // tutarlı okuma sağlanır
+}
+```
+
+---
+
+### 242. @Transactional Nerede Kullanılmamalı? Propagation Nedir?
+
+`@Transactional` anotasyonu genellikle **service katmanında** kullanılmalıdır.  
+`@Controller` veya `@Repository` seviyesinde kullanmak, AOP proxy yapısına zarar verebilir.
+
+**Propagation** özelliği, bir transactional metodun çağrıldığı anda mevcut bir transaction olup olmadığını ve yeni bir transaction başlatılıp başlatılmayacağını belirler.
+
+Yaygın türler:
+
+- `REQUIRED`: Varsayılan. Mevcut transaction varsa devam eder, yoksa yenisini açar.
+    
+- `REQUIRES_NEW`: Her zaman yeni transaction başlatır.
+    
+- `SUPPORTS`: Transaction varsa katılır, yoksa non-transactional yürütür.
+    
+- `NOT_SUPPORTED`: Transaction varsa askıya alır.
+    
+
+---
+
+### 243. Spring’de Circle Dependency Hatası Nasıl Çözülür?
+
+Circle dependency (dairesel bağımlılık), iki veya daha fazla bean’in birbirine bağımlı olmasıdır.
+
+**Çözümler:**
+
+- `@Lazy`: Bean’lerin yalnızca ihtiyaç duyulduğunda yüklenmesini sağlar.
+    
+- `@Primary` veya `@Qualifier`: Alternatif bean tanımlayarak Spring’in hangi bean’i kullanacağını belirler.
+    
+- **Redesign:** Bağımlılıkları soyutlayarak veya interface’lerle yeniden tasarlamak en kalıcı çözümdür.
+    
+
+```java
+@Service
+public class AService {
+    private final BService bService;
+    public AService(@Lazy BService bService) { this.bService = bService; }
+}
+```
+
+---
+
+### 244. @Lazy Kullanmadan Circle Dependency Nasıl Çözülür?
+
+Eğer `@Lazy` kullanmak istenmiyorsa, injection noktalarını yeniden yapılandırmak gerekir.  
+Örneğin bir taraf constructor injection yerine **setter injection** kullanabilir veya bağımlılık **event tabanlı** hale getirilebilir.
+
+Alternatif olarak `@Primary` veya `@Qualifier` ile spesifik bean seçimi yapılabilir.
+
+---
+
+### 245. Spring Bean Scope Nedir? Türleri Nelerdir?
+
+Spring Bean’lerinin yaşam döngüsü (scope) hangi koşullarda ve kaç defa oluşturulacağını belirler.
+
+- **singleton:** Varsayılan scope, konteyner başına tek örnek.
+    
+- **prototype:** Her injection isteğinde yeni örnek oluşturulur.
+    
+- **request:** Her HTTP isteği için yeni örnek (web uygulamalarında).
+    
+- **session:** Her kullanıcı oturumu için tek örnek.
+    
+
+```java
+@Scope("prototype")
+@Component
+public class TaskProcessor {}
+```
+
+---
+
+### 246. ApplicationContext Nedir?
+
+Spring’in temel yapı taşıdır. Bean’lerin oluşturulması, bağımlılıkların çözülmesi, event yönetimi ve uluslararasılaştırma gibi görevleri üstlenir.
+
+`ApplicationContext`, `BeanFactory`’nin gelişmiş bir versiyonudur.  
+Ek olarak:
+
+- Event Publishing
+    
+- Annotation Scanning
+    
+- MessageSource (i18n desteği) sağlar.
+    
+
+```java
+ApplicationContext context = new AnnotationConfigApplicationContext(AppConfig.class);
+MyService service = context.getBean(MyService.class);
+```
+
+---
+
+### 247. Bir Spring Projesinde Birden Fazla Config Dosyası Kullanılır mı?
+
+Evet. Spring, çoklu yapılandırma dosyalarını destekler.  
+Farklı modülleri veya ortamları ayırmak için birden fazla `@Configuration` sınıfı oluşturulabilir.
+
+```java
+@Configuration
+@Import({DatabaseConfig.class, SecurityConfig.class})
+public class AppConfig {}
+```
+
+Bu, projeyi **modüler** ve **okunabilir** hale getirir.
+
+---
+
+### 248. Spring IOC (Inversion of Control) Nedir? Türleri Nelerdir?
+
+IOC, nesnelerin yaşam döngüsünün uygulama tarafından değil, Spring Container tarafından yönetilmesi anlamına gelir.
+
+**İki tür bağımlılık enjeksiyonu vardır:**
+
+1. **Constructor Injection:** Bağımlılık, constructor üzerinden alınır.
+    
+2. **Setter Injection:** Bağımlılık, setter metoduyla atanır.
+    
+
+IOC, test edilebilirliği artırır ve loosely coupled (gevşek bağlı) mimari sağlar.
+
+---
+
+### 249. @Service, @Component, @Repository Arasındaki Fark Nedir?
+
+Spring bileşenlerinin katmanlara göre ayrılmasını sağlar:
+
+- `@Component`: Genel amaçlı bileşen.
+    
+- `@Service`: İş (business) katmanını temsil eder.
+    
+- `@Repository`: Veri erişim katmanını temsil eder, otomatik exception çevirimi (PersistenceExceptionTranslation) içerir.
+    
+
+Tüm bu anotasyonlar `@Component`’in specialization’ıdır (alt türüdür).
+
+---
+
+### 250. @ConditionalOnProperty Nedir?
+
+Bir property değerine göre bean’in oluşturulup oluşturulmayacağını belirler.
+
+```java
+@ConditionalOnProperty(name = "feature.enabled", havingValue = "true")
+@Service
+public class FeatureService {}
+```
+
+Bu yaklaşım, **feature toggle** veya **ortam bazlı konfigürasyonlar** için idealdir.
+
+---
+
+### 251. SpEL (Spring Expression Language) Nedir?
+
+Spring Expression Language, Spring bean’leri içinde dinamik değerler hesaplamak için kullanılan güçlü bir ifade dilidir.
+
+```java
+@Value("#{systemProperties['user.name']}")
+private String currentUser;
+```
+
+Ayrıca SpEL, bean property erişimi, metot çağrıları, koleksiyon işlemleri ve koşullu ifadeleri destekler.
+
+---
+
+### 252. @JsonIgnore, @JsonInclude, @JsonView Nedir?
+
+JSON serileştirme/deserileştirme işlemlerini kontrol ederler.
+
+- `@JsonIgnore`: Alanın JSON’a dahil edilmesini engeller.
+    
+- `@JsonInclude`: Belirli koşullarda alanları dahil eder (ör. `Include.NON_NULL`).
+    
+- `@JsonView`: Farklı görünüm seviyeleri tanımlar, API çıktısını özelleştirir.
+    
+
+Örnek:
+
+```java
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class User {
+    private String name;
+    @JsonIgnore private String password;
+}
+```
+
+---
+
+### 253. Spring Cache Anotasyonları Nelerdir?
+
+Spring, caching için entegre anotasyon desteği sunar:
+
+- `@Cacheable`: Metot sonucu cache’e alınır.
+    
+- `@CachePut`: Cache güncellenir.
+    
+- `@CacheEvict`: Cache temizlenir.
+    
+- `@EnableCaching`: Caching desteğini aktif hale getirir.
+    
+
+Örnek:
+
+```java
+@Cacheable("users")
+public User getUserById(Long id) { ... }
+```
+
+---
+
+### 254. Spring’de İç İçe Çağrımlarda Transaction Açılmasını İstemediğimiz Metoda Ne Yapılır?
+
+Propagation seviyesini değiştirerek kontrol edilir:
+
+```java
+@Transactional(propagation = Propagation.NOT_SUPPORTED)
+public void nonTransactionalMethod() { ... }
+```
+
+Bu durumda metot çağrıldığında mevcut transaction askıya alınır ve işlem transactional yürütülmez.
+
+---
+
+### 255. @Service Anotasyonunu Kullanmazsak Ne Olur?
+
+Spring, bileşeni otomatik olarak bean olarak tanımaz.  
+Bu durumda o sınıfın bir örneği oluşturulmaz ve `NoSuchBeanDefinitionException` fırlatılır.
+
+Alternatif olarak manuel bean tanımı yapılabilir:
+
+```java
+@Bean
+public MyService myService() { return new MyService(); }
+```
+
+---
+
+### 256. Spring Circle Dependency Problemi Redesign ile Nasıl Çözülür?
+
+Bağımlılık yönünü tersine çevirmek veya event tabanlı bir mimari kurmak gerekir.
+
+Örneğin:
+
+- `ApplicationEventPublisher` kullanarak bağımlı sınıflar arasındaki doğrudan bağlantıyı koparabilirsiniz.
+    
+- Interface tabakası eklenerek bağımlılık yönü tek yöne çevrilebilir.
+    
+
+---
+
+### 257. Spring Bean Yaşam Döngüsü Nasıldır?
+
+1. Bean tanımı okunur.
+    
+2. Constructor veya factory method çağrılır.
+    
+3. Dependency injection yapılır.
+    
+4. `@PostConstruct` metodları çalışır.
+    
+5. Bean kullanılabilir hale gelir.
+    
+6. Context kapandığında `@PreDestroy` metodları çağrılır.
+    
+
+---
+
+### 258. Spring’te ApplicationContext’in Olay (Event) Mekanizması Nedir?
+
+Spring, kendi event yayınlama sistemiyle event-driven yapıları destekler.
+
+```java
+@Component
+public class MyListener implements ApplicationListener<MyEvent> {
+    public void onApplicationEvent(MyEvent event) { ... }
+}
+```
+
+```java
+applicationContext.publishEvent(new MyEvent(this, "data"));
+```
+
+Bu sistem, modüller arası bağımlılığı azaltır.
+
+---
+
+### 259) Bir interface’de 5 metot var; ben sadece 2’sini kullanacağım, ne yaparım?
+
+**Ana stratejiler (pratikten kanıtlı):**
+
+- **Adapter/Abstract Base (önerilen):** Interface için bir **abstract adapter** yaz, gereksiz metotları **no-op** bırak; gerçek sınıf adapter’ı extend edip yalnızca gereken 2 metodu override eder.
+    
+- **UnsupportedOperationException:** Kullanmayacaklarına `throw new UnsupportedOperationException()` fırlat; niyet netleşir.
+    
+- **`default` metotlar:** Interface **seninse**, gereksizlere `default` gövde ver; binary uyumluluğu korursun.
+    
+- **Kompozisyon/delege:** Geniş interface’in yanında **dar bir port** (2 metotluk küçük arayüz) tanımla; implementasyon bu dar porta programlansın.
+    
+
+**Mini örnek (adapter):**
+
+```java
+interface BigApi {
+  void a(); void b(); void c(); void d(); void e();
+}
+
+abstract class BigApiAdapter implements BigApi {
+  public void a() {}
+  public void b() {}
+  public void c() {}
+  public void d() {}
+  public void e() {}
+}
+
+class OnlyAB extends BigApiAdapter {
+  @Override public void a() { /* logic */ }
+  @Override public void b() { /* logic */ }
+}
+```
+
+**Dikkat:** 3rd-party interface’e `default` ekleyemezsin. Geniş interface kokusunu (interface segregation) fark ettiysen uzun vadede **dar arayüzlere böl**.
+
+---
+
+### 260) Enum’a `abstract` metot yazarsam ne olur?
+
+- Enum içinde `abstract` metot tanımlanabilir; **her constant** bunu **override etmek zorunda**.
+    
+- Farklı constant’lar farklı strateji gibi çalışabilir (Strategy benzeri).
+    
+
+**Örnek:**
+
+```java
+enum Op {
+  ADD { int apply(int a,int b){ return a+b; } },
+  MUL { int apply(int a,int b){ return a*b; } };
+  abstract int apply(int a, int b);
+}
+```
+
+**Not:** Enum başka sınıfı **extend edemez** (zaten `java.lang.Enum`’u extend eder); interface implement edebilir.
+
+---
+
+### 261) `javac` nedir?
+
+- **Derleyici**: `.java` → `.class` bytecode.
+    
+- **Sürüm hedefleme:** `--release 21` (tek bayrakla rt kütüphane + dil seviyesi uyumu).
+    
+- **Classpath/Modules:**
+    
+    - Classpath: `-cp libs/*`
+        
+    - Modüller: `--module-path mlib --module your.module`
+        
+- **Annotation processing:** `-processor`, `-proc:only`
+    
+- **Uyarılar/Debug:** `-Xlint:all -Werror -g`
+    
+- **Parametre isimleri (reflection için):** `-parameters`
+    
+
+**Örnek:**
+
+```bash
+javac --release 21 -Xlint:all -parameters -d out $(find src -name "*.java")
+```
+
+---
+
+### 262) Stream `filter` hangi parametreyi alır?
+
+- **`Predicate<? super T>`**. `true` dönenler akışta kalır.
+    
+- **Saf (pure) tut**: Yan etki yazma, dış state’e bağımlı olma.
+    
+
+**Örnek:**
+
+```java
+List<String> names = List.of("Ali","Ayşe","Veli");
+var shortOnes = names.stream()
+                     .filter(s -> s.length() <= 3) // Predicate<String>
+                     .toList();
+```
+
+---
+
+### 263) Kafka partition assignment stratejileri (consumer group)
+
+**Konfig:** `partition.assignment.strategy`  
+Seçenekler ve davranış:
+
+- **RangeAssignor:** Aralık bazlı dağıtır; partition sayıları/topic dağılımı eşit değilse dengesizlik olabilir.
+    
+- **RoundRobinAssignor:** Teker teker sırayla dağıtır; genelde daha dengeli.
+    
+- **StickyAssignor / CooperativeStickyAssignor (güncel tercih):** Rebalance’da **minimum hareket** + **inkremental** el değiştirme → **daha az duraklama**.
+    
+
+**Pratik öneri:** Prod’da **`CooperativeStickyAssignor`** çoğu senaryoda en az kesinti.
+
+---
+
+### 264) Uzak (remote) Kafka consumer performansı nasıl iyileştirilir?
+
+**Temel etkenler:** RTT (gecikme), bant genişliği, mesaj boyutu, partition dağılımı.
+
+**Consumer tuning:**
+
+- Batch/istek sayısı: `fetch.min.bytes`, `fetch.max.wait.ms`, `max.partition.fetch.bytes`
+    
+- Soket buffer’ları: `receive.buffer.bytes` (OS limite dikkat)
+    
+- Poll davranışı: `max.poll.records`, `max.poll.interval.ms` (işleme sürene göre ayarla)
+    
+- Parallelizm: **partition sayısı ≥ consumer paralelliği**
+    
+
+**Üretici tarafı da önemlidir:**
+
+- `compression.type` (lz4/zstd), `linger.ms`, `batch.size` ile **daha büyük batch** → **daha az round-trip**
+    
+- **Cross-region** kaçınılmazsa: **VPC peering**, MTU/packetization, TLS maliyeti (CPU) planlaması.
+    
+
+**Gözlemle:** Consumer lag, bytes in/out, fetch rate; **throttle** ve **rebalance** olaylarını izle.
+
+---
+
+### 265) Cloud development (sahada gerçekten olan)
+
+- **12-Factor** ilkeleri: config dışarıda, stateless process, disposability.
+    
+- **IaC & GitOps:** Terraform/Pulumi; ArgoCD/Flux ile deklaratif dağıtım.
+    
+- **CI/CD:** Mavi-yeşil, canary; artifact imzası (SBOM, SLSA).
+    
+- **Managed servisler:** DB, queue, cache’i yönetilenden al; az operasyonel yük.
+    
+- **Observability:** Tracing (OpenTelemetry), metrics (Micrometer/Prometheus), logs.
+    
+- **Day-2 ops:** Autoscaling, chaos drills, bütçe alarmları (cost guardrails), SLO/SLI.
+    
+
+**Kısayol:** “Önce platform guardrail’lerini kur, sonra uygulama koş.” Güvenlik, gözlemlenebilirlik ve maliyet duvarları **en başta**.
+
+---
+
+### 266) Redis cluster mode vs standalone
+
+- **Standalone:** Basit, tek düğüm; **tek hata noktası**, yatay ölçek yok. Sentinel ile **yalnızca failover** (shard yok).
+    
+- **Cluster:** 16.384 **hash slot**; sharding + replika + otomatik failover. **Multi-key** işlemler **aynı slot** gerektirir; `EVAL`/transaction sınırlarına dikkat.
+    
+
+**Ne zaman hangisi?**
+
+- **Kritik veri, yüksek trafik** → Cluster.
+    
+- **Basit cache, düşük hacim** → Standalone + Sentinel yeterli olabilir.
+    
+
+---
+
+### 267) Hibernate N+1 problemi
+
+**Belirti:** Koleksiyon/ilişkiyi her satır için ayrı sorgu çekmesi.
+
+**Tespit:**
+
+- SQL log’u aç (`hibernate.show_sql`/`org.hibernate.SQL=DEBUG`).
+    
+- Prod’da APM/trace ile sorgu sayısı ve sürelerini izle.
+    
+
+**Çözümler (başarı sırası pratikte):**
+
+1. **`JOIN FETCH` / `@EntityGraph`**: Hedefli eager.
+    
+2. **Batch fetch**: `@BatchSize(size=...)` veya `hibernate.default_batch_fetch_size`.
+    
+3. **`SUBSELECT`**: Koleksiyonlar için tek ek sorgu ile toplama.
+    
+4. **DTO projection**: İhtiyaç kadar alan çek.
+    
+
+**Karşı-örnek:** Aynı entity’de **iki “bag” koleksiyonu** `JOIN FETCH` ile beraber → kartesyen patlama. Parçala.
+
+---
+
+### 268) Immutable class nasıl doğru tasarlanır?
+
+**Kurallar:**
+
+- Alanlar: `private final`
+    
+- Setter **yok**
+    
+- **Defansif kopya**: `Date`, `List`, `Map` gibi mutable alanlar için kopya al/ver
+    
+- Sınıf mümkünse `final`
+    
+- Eşitlik: `equals/hashCode` yalnızca alanlara
+    
+
+**Örnek (temiz):**
+
+```java
+public final class User {
+  private final String id;
+  private final List<String> roles;
+
+  public User(String id, List<String> roles) {
+    this.id = id;
+    this.roles = List.copyOf(roles); // defensive copy
+  }
+  public String id() { return id; }
+  public List<String> roles() { return roles; } // already unmodifiable
+}
+```
+
+**Alternatifler:**
+
+- **`record`** (Java 16+): Doğası gereği immutability.
+    
+- **Lombok `@Value`**: final alanlar + getter + equals/hashCode + toString.
+    
+
+**Dikkat:** Immutable nesneler concurrency’de **bedava thread-safe**; ama büyük koleksiyonlarda kopya maliyetini ölç.
+
+---
+
+### 269) DDD (Domain-Driven Design) nedir?
+
+- **Amaç:** Karmaşık iş kurallarını kodla **aynı dilde** ifade etmek ve değişimi **domain sınırları**yla yönetmek.
+    
+- **Temel taşlar:**
+    
+    - **Ubiquitous Language:** İş ekipleriyle aynı terimleri kodda kullan.
+        
+    - **Bounded Context:** Kavramların anlamı **bağlama özgüdür**; tek “User” modeli yerine her bağlamda ayrı “User”.
+        
+    - **Aggregate & Root:** Tutarlılık sınırı; dış dünya **sadece Root** üzerinden değişiklik yapar.
+        
+    - **Value Object:** Kimliksiz, eşitlik **değer** üzerinden; immutable tasarla.
+        
+    - **Domain Event:** “Ne oldu?”yu açıkla; bağlamlar arası entegrasyon için altın değer.
+        
+- **Uygulama ipuçları:**
+    
+    - **Katmanlı yapı:** API / Application / Domain / Infra.
+        
+    - Servisler “orkestrasyon”, **domain model** iş kuralıdır.
+        
+    - Anti-corruption layer ile eski sistemleri **izole** et.
+        
+- **Kırmızı bayraklar:** Anemik domain (sadece getter/setter), devasa “God Service”, bağlamlar arası sızıntı.
+    
+
+---
+
+### 270) Kafka’da consumer group nedir, ne işe yarar?
+
+- **Paralel tüketim:** Bir topic’in **her partition’ı grup içinde tek consumer** tarafından işlenir → **doğrusal ölçek** = partition sayısı.
+    
+- **Dayanıklılık:** Offset’ler **grup kimliği** ile tutulur; consumer yeniden başladı mı kaldığı yerden devam eder.
+    
+- **Tuning:**
+    
+    - **Rebalance süreleri:** `max.poll.interval.ms`, `session.timeout.ms`, `heartbeat.interval.ms`.
+        
+    - **İşleme süresi uzun** akışlarda `max.poll.interval.ms` artır; aksi halde consumer “ölü” sanılır.
+        
+    - **Idempotent işleme** ve **retry-DLQ** stratejisini gruba göre kurgula.
+        
+
+---
+
+### 271) JPA Projection nedir?
+
+- **Neden:** Entity’nin tamamını çekmek **şişkinlik** ve **N+1** tetikler. Sadece ihtiyacın olan alanları al.
+    
+- **Türler:**
+    
+    - **Interface projection (closed):**
+        
+        ```java
+        interface UserView { String getId(); String getEmail(); }
+        List<UserView> findByActiveTrue();
+        ```
+        
+    - **DTO projection (constructor):**
+        
+        ```java
+        record UserDto(String id, String email) {}
+        @Query("select new com.acme.UserDto(u.id, u.email) from User u where u.active = true")
+        ```
+        
+    - **Native/ResultSet mapping:** Şema-özeline in, ama taşınabilirlik azalır.
+        
+- **Not:** Projection + **join fetch** karışımlarında kartesyen patlamaya dikkat.
+    
+
+---
+
+### 272) Spring’in default server’ı nedir, nasıl değişir?
+
+- **Varsayılan:** Embedded **Tomcat** (blocking I/O).
+    
+- **Alternatif:** **Jetty** veya **Undertow** (non-blocking).
+    
+- **Geçiş:** Tomcat starter’ı çıkar, Jetty/Undertow starter’ı ekle.
+    
+    ```xml
+    <!-- pom.xml -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-web</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-tomcat</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-jetty</artifactId>
+    </dependency>
+    ```
+    
+- **Seçim kriteri:** **Thread modeli**, **yük profili**, **uyumluluk**.
+    
+
+---
+
+### 273) Stream vs Collection
+
+- **Collection:** Veri **deposu**; çok kez iterate edilir.
+    
+- **Stream:** Veri **boru hattı**; lazy, **tek sefer** tüketim; ara işlemler (map/filter), terminal işlem (collect/reduce).
+    
+- **Yan etkiler:** Stream zincirini **saf** tut; paralel akışta paylaşılan mutable state’ten kaçın.
+    
+- **Kısa örnek:**
+    
+    ```java
+    var sum = orders.stream()
+                    .filter(o -> o.isPaid())
+                    .mapToLong(Order::amountCents)
+                    .sum();
+    ```
+    
+
+---
+
+### 274) `Supplier` ne işe yarar?
+
+- **Tanım:** Girdi almadan değer üretir → `T get()`.
+    
+- **Kullanımlar:**
+    
+    - Lazy yaratım: `memoizedSupplier.get()` ilk çağrıda üretir, sonra aynı değeri döner.
+        
+    - Retry/backoff: Başarısız işlemi tedarikçi fonksiyonla sar.
+        
+    - Default değer: Map/getOrDefault kalıpları.
+        
+- **Mini örnek (memoize):**
+    
+    ```java
+    static <T> Supplier<T> memoize(Supplier<T> s) {
+      final AtomicReference<T> ref = new AtomicReference<>();
+      final AtomicBoolean init = new AtomicBoolean(false);
+      return () -> {
+        if (init.compareAndSet(false, true)) ref.set(s.get());
+        return ref.get();
+      };
+    }
+    ```
+    
+
+---
+
+### 275) `volatile` ne sağlar, ne sağlamaz?
+
+- **Sağlar:** Görünürlük ve **happens-before** sıralaması. Her okuma/yazma **main memory** üzerinden; CPU cache tutarsızlıkları olmaz.
+    
+- **Sağlamaz:** **Atomiklik** veya bileşik işlemler (örn. `x++`) için güvenlik.
+    
+- **Doğru kullanım:**
+    
+    - **İşaret bayrağı** (stopFlag).
+        
+    - **Tek üretici-tek tüketici** gibi hafif senaryolarda state görünürlüğü.
+        
+- **Sayaç/istatistik için:** `AtomicLong`, yoğun yazım altında `LongAdder` daha iyi.
+    
+- **Örnek:**
+    
+    ```java
+    class Worker {
+      private volatile boolean running = true;
+      void stop() { running = false; }
+      void loop() { while (running) { /* work */ } }
+    }
+    ```
+    
+
+---
+
+### 276) `@Data`, `@Getter`, `@Setter` (Lombok)
+
+**Kısa kural:**
+
+- **DTO/response** objeleri **immutability** istiyorsa: `record` (Java 16+) **veya** `@Getter` + `final` alanlar + `@Builder`.
+    
+- **Entity** (JPA) için **`@Data` önermem**: `equals/hashCode` ilişkilerde döngü ve performans sorununa davetiye çıkarır; `toString` da aynı.
+    
+- Basit POJO’da sadece ihtiyaç kadar aç: **`@Getter`**; çok nadir gerekenlere **`@Setter`**.
+    
+
+**Yaygın hatalar ve çözümler:**
+
+- `@Data` + JPA entity → **Hayır**. Onun yerine:
+    
+    ```java
+    @Getter @Setter // alan bazlı kontrollü
+    @EqualsAndHashCode(onlyExplicitlyIncluded = true)
+    @ToString(of = {"id","email"})
+    class User { @EqualsAndHashCode.Include Long id; String email; ... }
+    ```
+    
+- Builder lazım ama koleksiyonlar var → `@Builder` + `@Singular`.
+    
+- Serileştirme (Jackson) yapıyorsan **no-args ctor** ihtiyacı → `@NoArgsConstructor(force = true)` + `@AllArgsConstructor`.
+    
+
+---
+
+### 277) `@Stereotype` nedir? Spring vs CDI
+
+- **Spring’de** `@Stereotype` diye **özel bir anotasyon yok**; `@Component`, `@Service`, `@Repository`, `@Controller` gibi **stereotype anotasyonlar** var.
+    
+- **CDI (Jakarta)** dünyasında “stereotype” bir meta-anotasyon kavramıdır.
+    
+- Spring’de kendi bileşik anotasyonunu oluşturabilirsin:
+    
+    ```java
+    @Target(TYPE)
+    @Retention(RUNTIME)
+    @Component
+    public @interface UseCase { }
+    ```
+    
+    Böylece `@UseCase` ile iş kuralı sınıflarını taramaya dahil edersin; anlam da kazanır.
+    
+
+---
+
+### 278) Sistemler arası iletişim
+
+**REST (HTTP/JSON)**
+
+- Artılar: Yaygın ekosistem, gateway/observability kolay.
+    
+- Eksiler: Sözleşme zayıf (OpenAPI şart), over/under-fetch riski.
+    
+- Kullan: Genel amaçlı, internet ölçeğinde API.
+    
+
+**gRPC (HTTP/2 + Protobuf)**
+
+- Artılar: Sıkı sözleşme, düşük bant genişliği, streaming.
+    
+- Eksiler: Tarayıcı native desteği sınırlı (genelde proxy).
+    
+- Kullan: **Mikroservis-içi** düşük gecikme, yüksek throughput.
+    
+
+**GraphQL**
+
+- Artılar: Tek endpoint, istemci istediğini çeker.
+    
+- Eksiler: N+1, caching & auth karmaşıklığı.
+    
+- Kullan: Çok farklı istemci/ekranlar, esnek veri ihtiyaçları.
+    
+
+**SOAP**
+
+- Artılar: Resmi sözleşme, kurumsal entegrasyon, WS-*.
+    
+- Eksiler: Ağır; modern dünyada sınırlı.
+    
+- Kullan: Mevcut kurumsal sistemlerle zorunlu entegrasyon.
+    
+
+**MQ (Kafka/RabbitMQ)**
+
+- Artılar: Gevşek bağlılık, backpressure, retry/DLQ.
+    
+- Eksiler: Operasyonel karmaşıklık, en sonunda **consistency** konusu.
+    
+- Kullan: Asenkron süreçler, entegrasyon, event-driven.
+    
+
+---
+
+### 279) İki faktörlü erişim (2FA)
+
+**Faktör tipleri:**
+
+- **Bilgi:** Şifre.
+    
+- **Sahiplik:** TOTP (Google Authenticator), SMS (zayıf), **FIDO2/U2F (güçlü)**.
+    
+- **Biyometri:** Parmak izi/yüz (genelde cihaz bağlamında).
+    
+
+**Öneriler:**
+
+- **TOTP** (RFC 6238) + **backup codes** zorunlu kıl.
+    
+- Mümkünse **WebAuthn/FIDO2** ekle (phishing dirençli).
+    
+- Brute-force’a karşı **rate limit** ve **device binding** uygula.
+    
+- **Saat kayması** (drift) için ±30–60 sn tolerans; başarısız girişleri logla ve uyarı üret.
+    
+
+---
+
+### 280) `List.of` nedir? `immutable` vs `unmodifiable`
+
+- `List.of(...)` **gerçekten immutable** bir liste döndürür: `add/remove/set` → **`UnsupportedOperationException`**; **`null` kabul etmez**.
+    
+- `List.copyOf(collection)` koleksiyonun **değiştirilemez bir kopyasını** döndürür (kaynak zaten unmodifiable ise aynısını).
+    
+- `Collections.unmodifiableList(new ArrayList<>(...))` **sargı**dır; alttaki liste değişirse dışarı yansır (yanlış anlaşılır).
+    
+- `Arrays.asList(...)` **sabit boyutlu** (structural mod yok), ama `set` yapılabilir.
+    
+
+**Kısa kural:** Paylaşılacak sabit veri için `List.of`; var olanı kilitlemek için `List.copyOf`.
+
+---
+
+### 281) JS arrow function & ECMAScript sürümü
+
+**Arrow function:**
+
+- Kısa sözdizimi + **lexical `this`**; `function`’daki `this` tuzaklarını azaltır.
+    
+- `arguments`, `new.target` gibi bağlamları **yoktur**; constructor olarak **kullanılamaz**.
+    
+
+```js
+const double = x => x * 2;
+const obj = {
+  val: 41,
+  incLater() { setTimeout(() => { this.val++; }, 0); } // lexical this
+};
+```
+
+**ECMAScript sürümü:**
+
+- Her yıl **ES20xx** olarak yayınlanır. “En son” sürüm **yıla bağlıdır**; pratikte önemli olan hedef ortam (tarayıcı/Node) desteği. Yeni dil özelliği kullanacaksan **Babel/TS** transpile stratejini belirle ve **core-js** polyfill planı yap.
+    
+
+---
+
+### 282) Stop-the-World (STW) — ne zaman, nasıl kısaltılır?
+
+**Ne zaman:** GC’in belirli fazlarında tüm uygulama thread’leri durur. G1, ZGC, Shenandoah **STW süresini kısaltır** ama sıfırlamaz.
+
+**Etkileyenler:**
+
+- **Heap boyutu, canlı veri (live set), allocation rate**
+    
+- **Safepoint** yoğunluğu, dev objeler (humongous in G1)
+    
+
+**Ayarlamalar:**
+
+- G1: `-XX:+UseG1GC -XX:MaxGCPauseMillis=200` (hedef; garanti değildir)
+    
+- Büyük objeleri azalt; **objeyi yeniden kullan** (escape analysis’ı bozma).
+    
+- **TLAB** etkin (varsayılan); kıymetli ise `-XX:+PrintTLAB` ile izle.
+    
+- **Profil:** JFR (Java Flight Recorder) ile **GC Pause**, **Allocation Pressure** grafiğine bak.
+    
+
+---
+
+### 283) `flush` sadece commit’te olsun; `select` tetiklemesin
+
+**Çözüm:**
+
+- Global: `spring.jpa.properties.hibernate.flushMode=COMMIT`
+    
+- Ya da EntityManager/Query bazlı:
+    
+    ```java
+    entityManager.setFlushMode(FlushModeType.COMMIT);
+    query.setFlushMode(FlushModeType.COMMIT);
+    ```
+    
+
+**Bilmen gerekenler:**
+
+- Hibernate **auto-flush** stratejisi bazı `SELECT`lerde tutarlılık için flush ister; `COMMIT`’e alınca bunu ertelersin.
+    
+- Native SQL ile çalışırken otomatik flush beklentin farklı olabilir; transaction sınırlarını net tut.
+    
+- **Toplu okuma (read-only)** sorgular için: `@Transactional(readOnly = true)` ve `hibernate.default_batch_fetch_size` gibi ayarlara odaklan.
+    
+
+---
+
+### 284) JMX
+
+**Ne işe yarar:** JVM ve uygulama MBean’leri üzerinden **metrik/operasyon** sunar (heap, thread, GC; app-özel sayaçlar).
+
+**Kullanım yolları:**
+
+- Araçlar: `jconsole`, `jvisualvm`, **JMC**.
+    
+- Spring Boot:
+    
+```properties
+    management.endpoints.jmx.exposure.include=*
+    management.endpoint.jmx.enabled=true
+    spring.jmx.enabled=true
+    
+    @ManagedResource
+    class CacheStats {
+      @ManagedAttribute public long getHitRate() { ... }
+      @ManagedOperation public void reset() { ... }
+    }
+```
+    
+- Prometheus için **JMX Exporter** ile metrikleri scrape et.
+    
+
+**Güvenlik:** Uzak JMX açacaksan TLS/sasl ve firewall şart; aksi halde risk.
+
+---
+
+### 285) ACID vs BASE
+
+**ACID (OLTP klasik)**
+
+- **Atomisite, Tutarlılık, İzolasyon, Kalıcılık**
+    
+- Bankacılık, stok, rezervasyon gibi **anomaliye tahammül yok** senaryolar.
+    
+
+**BASE (dağıtık/NoSQL)**
+
+- **Basically Available, Soft state, Eventual consistency**
+    
+- Küresel okuma hacmi yüksek, yazı-yoğun, **partisyon toleransı** isteyen sistemler.
+    
+
+**Karar:**
+
+- **CAP üçgeni** (Consistency–Availability–Partition Tolerance) bağlamında düşün.
+    
+- BASE seçtiysen: **quorum** (R+W>N), **read-repair**, **conflict resolution** (CRDT, LWW, app-level merge) stratejilerini netleştir.
+    
+- Karma mimari: **CQRS + Event Sourcing** ile yazma ACID, okuma BASE yapılabilir; ama **operasyonel karmaşıklığı** göze al.
+    
+
+---
+
+### 286) Idempotency
+
+**Tanım:** Aynı isteği **tekrar tekrar** göndersen de **son durumun değişmediği** işlem.  
+**HTTP bağlamı:** `PUT`, `DELETE` varsayılan olarak idempotent; `POST` **değil** (ama key ile idempotent yapılabilir).
+
+**Uygulama desenleri:**
+
+- **Idempotency-Key (önerilen):** İstek header’ı `Idempotency-Key: <guid>`; sunucu bu anahtarı **işlem sonucu** ile birlikte **idempotency store**’da (Redis/DB) saklar, aynı anahtar gelirse **önceki yanıtı** döner.
+    
+- **Doğal benzersizlik:** Örn. `orderId` unique; aynı `orderId` ile tekrar deneme → no-op.
+    
+- **Outbox + de-dup:** Event yayınında `messageId` benzersiz; consumer tarafında **işlendi kayıtları** tut.
+    
+
+**Köşe taşları:**
+
+- **At-least-once** teslimatta **yan etkileri** (DB yazımı, email, para transferi) dedup et.
+    
+- **Zaman penceresi** tanımla (key TTL) ve **sadece güvenli alanlarda** cache’le.
+    
+- Yanıtı da sakladığın için **tam deterministik** dönersin.
+    
+
+**Basit örnek (pseudo):**
+
+```java
+String key = request.getHeader("Idempotency-Key");
+return store.computeIfAbsent(key, () -> executeOnceAndPersistResponse(request));
+```
+
+---
+
+### 287) JPA vs Hibernate
+
+- **JPA:** Sadece **spesifikasyon** (arayüzler, anotasyonlar). Uygulama **seç**mek zorundasın.
+    
+- **Hibernate:** JPA’nın **en yaygın implementasyonu** + ekstra yetenekler (StatelessSession, second-level cache ayrıntıları, natural id, vs).
+    
+
+**Ne kullanmalı?**
+
+- **API olarak JPA**, **motor olarak Hibernate** yaklaşımı en esnek olanı. Kod JPA’ya programlanır, gerekirse motoru değiştirebilirsin.
+    
+
+**Alternatifler:**
+
+- **EclipseLink**, **OpenJPA** (ORM).
+    
+- **jOOQ**: ORM değil; **tip-güvenli SQL DSL**. Kompleks SQL ağırlıklı projelerde muazzam.
+    
+
+**Pratik notlar:**
+
+- JPA/Hibernate ile **N+1** ve **şişkin entity** riskini projection/DTO ile azalt.
+    
+- Native SQL gerektiğinde korkma; JPA `@SqlResultSetMapping` ya da doğrudan JDBC/jOOQ.
+    
+
+---
+
+### 288) Apache Solr
+
+**Ne:** Lucene üzerinde kurulu, **full-text arama** ve **facet** motoru.  
+**Özellikler:** Schema yönetimi, sharding/replication, highlighting, analyzers, query parsers (edismax), collection yönetimi.
+
+**Kullanım alanları:**
+
+- Site içi arama, katalog/ürün araması, log & doküman arama, faceted navigation.
+    
+- Zengin **facet** ve **keyword scoring** senaryolarında güçlü.
+    
+
+**Solr vs ES kısa fark:**
+
+- Solr **çok özelleştirilebilir** query parser ve schema yönetiminde esnek.
+    
+- ES **JSON-first** API ve ekosistem araçlarında (beats, kibana) daha pratik.
+    
+- Karar: Ekip yetkinliği + operasyonel kısıtlar.
+    
+
+**Tuning ipuçları:** Doğru analyzer/tokenizer, field-type, **docValues**; filtreleri **cache**; sıcak shard replikalarını izole et.
+
+---
+
+### 289) Java Agent
+
+**Ne:** JVM başlarken `-javaagent:agent.jar` ile yüklenip sınıfların **bytecode**’una enstrümantasyon/transformasyon uygulayan parça.
+
+**Kullanımlar:**
+
+- **APM/Profil:** Metot süreleri, SQL izleme, dağıtık iz.
+    
+- **Güvenlik:** Policy enforcement, kanca takma.
+    
+- **Log/Trace zenginleştirme:** MDC/Span id otomasyonu.
+    
+
+**Temel API:**
+
+- `premain(String args, Instrumentation inst)` → startup’ta
+    
+- `agentmain` → runtime attach (tools.jar / Attach API)
+    
+- `ClassFileTransformer` ile bytecode rewrite.
+    
+
+**Dikkat:**
+
+- Sürüm/bytecode uyumu, **performans** ve **classloading** etkileri.
+    
+- Gölge bağımlılık (shading) ve minimal yüzey alanı.
+    
+
+---
+
+### 290) Double-brace initialization
+
+**Örnek (kötü):**
+
+```java
+Set<String> s = new HashSet<>() {{ add("A"); add("B"); }};
+```
+
+**Sorunlar:**
+
+- **Anonim inner class** yaratır → fazladan sınıf/metaveri.
+    
+- **Serileştirme** ve **memory leak** riskleri.
+    
+- Eşitlik/`equals` davranışında sürprizler.
+    
+
+**Doğru alternatifler:**
+
+```java
+Set<String> s = Set.of("A", "B");         // immutable
+List<String> l = new ArrayList<>(List.of("A","B")); // mutable kopya
+Map<String,Integer> m = Map.of("a",1,"b",2);
+```
+
+---
+
+### 291) Spring’de çoklu veritabanı (multi-DB)
+
+**Amaç:** Farklı DB’ler (örn. `primary` = OLTP, `analytics` = rapor) için **ayrı EM/Tx**.
+
+**Adımlar:**
+
+1. **İki `DataSource` bean** (birine `@Primary`).
+    
+2. Her DS için **`LocalContainerEntityManagerFactoryBean`**.
+    
+3. Her biri için **`PlatformTransactionManager`**.
+    
+4. Repository paketlerini **adresle**:
+    
+
+```java
+@EnableJpaRepositories(
+  basePackages = "com.acme.repo.primary",
+  entityManagerFactoryRef = "emfPrimary",
+  transactionManagerRef   = "txPrimary"
+)
+```
+
+5. Kullanımda `@Transactional("txPrimary")` veya `@Qualifier` ile seçim.
+    
+
+**Dikkat:**
+
+- **Cross-DB transaction** gerekiyorsa 2PC/JTA karmaşıklığı (kaçın, mümkünse **işlemsel sınırları** net böl).
+    
+- Healthcheck, migration, seeding süreçlerini **ayrı** kurgula.
+    
+
+---
+
+### 292) SOLID — S: Single Responsibility Principle (SRP)
+
+**Öz:** Bir sınıfın **tek bir değişim nedeni** olsun.  
+**Belirti:** “Bu sınıf şunları da yapıyor…” demeye başladıysan böl.
+
+**Nasıl uygularım?**
+
+- **Modülerleştir:** Command/Handler, Strategy, Policy objeleri.
+    
+- **Boundary çiz:** API (giriş) / Application (orkestrasyon) / Domain (iş kuralı) / Infra (yan etkiler).
+    
+
+**Kazanç:** Test kolaylığı, değişim izolasyonu, düşük coupling.
+
+---
+
+### 293) CQRS
+
+**Kavramsal:** **Command** (yazma) modeli ile **Query** (okuma) modelini **ayrı** tut.  
+**Artılar:** Performans (okuma farklı ölçeklenir), model netliği, güvenli sakınma (okuma **denormalize**).  
+**Eksiler:** **Operasyonel karmaşıklık**, veri senkronizasyonu (event propagation).
+
+**Ne zaman?:**
+
+- Okuma → çok yüksek RPS, yazma → kompleks tutarlılık.
+    
+- Farklı SLİ/SLÖ hedefleri.
+    
+
+**Uygulama:**
+
+- **Command side** ACID (RDBMS), **Query side** BASE (cache/NoSQL).
+    
+- **Event Sourcing** ile birleşirse geçmiş/denetim izi hediyesi; ama karmaşıklık büyür.
+    
+
+---
+
+### 294) Dockerfile
+
+**İlkeler:**
+
+- **Multi-stage build**: Dev bağımlılıklarını final imaja taşıma.
+    
+- **Küçük base image**: `eclipse-temurin:21-jre-alpine` gibi.
+    
+- **Layer cache**: Sık değişen dosyaları **sona** koy; `COPY` sırasını önemse.
+    
+- **Kök olmayan kullanıcı**: `USER 1000:1000`.
+    
+- **Sağlık kontrolü**: `HEALTHCHECK`.
+    
+- **JVM konteyner farkındalığı**: Java 10+ otomatik; yine de `-XX:MaxRAMPercentage` gözden geçir.
+    
+
+**Örnek:**
+
+```dockerfile
+# build
+FROM eclipse-temurin:21-jdk AS build
+WORKDIR /src
+COPY . .
+RUN ./mvnw -q -DskipTests package
+
+# run
+FROM eclipse-temurin:21-jre-alpine
+WORKDIR /app
+COPY --from=build /src/target/app.jar /app/app.jar
+EXPOSE 8080
+USER 1000:1000
+HEALTHCHECK --interval=30s --timeout=3s CMD wget -qO- http://localhost:8080/actuator/health || exit 1
+ENTRYPOINT ["java","-jar","/app/app.jar"]
+```
+
+**Konteyner JVM hatırlatmaları:**
+
+- K8s `resources.limits.memory` → **`OutOfMemoryError: Container killed`** riski; heap’i limitin **%60–70**’i civarı hedefle.
+    
+
+---
+
+### 295) API mimari türleri
+
+**REST**
+
+- Artı: Basit, yaygın, HTTP ekosistemi güçlü.
+    
+- Eksi: Over/under-fetch; versiyonlama ve sözleşme disiplini şart.
+    
+- Kullan: Genel amaçlı harici API.
+    
+
+**gRPC**
+
+- Artı: **Protobuf** ile hızlı/kompakt, HTTP/2, streaming.
+    
+- Eksi: Tarayıcı doğrudan sınırlı; genelde **gateway** lazım.
+    
+- Kullan: Mikroservis-içi, düşük latency, yüksek throughput.
+    
+
+**GraphQL**
+
+- Artı: Tek endpoint, **istemci istediği alanı** alır; mobil/çok ekran için harika.
+    
+- Eksi: N+1, caching/policy zor; gateway ve schema governance şart.
+    
+- Kullan: Zengin istemci ihtiyaçları, farklı view’lar.
+    
+
+**SOAP**
+
+- Artı: WS-* ile kurumsal güvenlik/transaction standartları.
+    
+- Eksi: Ağır; modern web için hantaldır.
+    
+- Kullan: Miras sistemler, zorunlu entegrasyonlar.
+    
+
+**MQ/Event-Driven**
+
+- Artı: Gevşek bağ, **backpressure**, retry/DLQ; offline toleransı.
+    
+- Eksi: Teslim garantileri, sıraya alma ve **veri tutarlılığı** yönetimi.
+    
+- Kullan: Asenkron süreçler, entegrasyon, audit akışları.
+    
+
+**Kısa karar ağacı:**
+
+- **İç servis ↔ iç servis, performans kritik** → gRPC
+    
+- **Dış dünya/mobil/web** → REST veya GraphQL
+    
+- **Asenkron iş akışı** → Kafka/RabbitMQ
+    
+- **Kurumsal legacy** → SOAP kaçınılmaz olabilir
+    
+
+---
+
+### 296) PostgreSQL’de paralel sorgu nasıl çalışır?
+
+**Çalışma mantığı:** Planner uygun görürse **Parallel Seq Scan / Parallel Index Scan** planı üretir, **Gather/Gather Merge** düğümüyle worker sonuçlarını birleştirir.  
+**Paralelleşebilenler:** Büyük `SELECT`ler, `JOIN`ler, `AGG`ler; `PARALLEL SAFE` fonksiyonlar.  
+**Paraleli engelleyenler:** Küçük tablolar (kâr etmiyor), `PARALLEL UNSAFE` fonksiyonlar, belirli cursor/snapshot durumları.
+
+**Kritik ayarlar:**
+
+- `max_worker_processes` (toplam işçi üst sınırı)
+    
+- `max_parallel_workers` (paralel worker üst sınırı)
+    
+- `max_parallel_workers_per_gather` (tek sorgu için max worker)
+    
+- `min_parallel_table_scan_size`, `min_parallel_index_scan_size` (paralel kullanmak için alt sınır)
+    
+- `parallel_leader_participation` (leader da çalışsın mı)
+    
+- Cost tuning: `parallel_setup_cost`, `parallel_tuple_cost`
+    
+
+**Hızlı deneme:**
+
+```sql
+SET max_parallel_workers_per_gather = 4;
+SET max_parallel_workers = 8;
+SET max_worker_processes = 8;
+
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT sum(t.amount)
+FROM big_table t
+JOIN big_lookup l ON t.fk = l.id
+WHERE t.created_at >= now() - interval '30 days';
+-- Plan'da 'Gather' ve 'Parallel Seq Scan' görmelisin.
+```
+
+**İpuçları:**
+
+- Büyük taramalar için **istatikler güncel** olsun (`ANALYZE`).
+    
+- `PARALLEL SAFE` fonksiyonlar yaz (immutable/pure).
+    
+- Columnar/OLAP motorları (ClickHouse, Citus, etc.) daha agresif paralellik sunar; ihtiyaca göre mimariyi seç.
+    
+
+---
+
+### 297) MapStruct `expression`
+
+**Amaç:** Sıradan alan eşlemesi yetmeyince **inline Java** ifadesi yazmak.
+
+**Basit kullanım:**
+
+```java
+@Mapping(target = "fullName",
+         expression = "java(src.getFirstName() + \" \" + src.getLastName())")
+Target map(Source src);
+```
+
+**Helper ile (önerilir):**
+
+```java
+@Mapper(uses = NameHelper.class)
+interface UserMapper {
+  @Mapping(target="fullName",
+           qualifiedByName="joinFullName")
+  Target map(Source src);
+}
+
+class NameHelper {
+  @Named("joinFullName")
+  String fullName(Source s) {
+    return (s.getFirstName() + " " + s.getLastName()).trim();
+  }
+}
+```
+
+**Neden helper?** Test edilebilirlik, tekrar kullanım, karmaşık mantığın mapper’den izole edilmesi.
+
+**Diğer faydalılar:**
+
+- `constant = "TR"` sabit atama
+    
+- `defaultExpression = "java(Instant.now())"`
+    
+- `nullValuePropertyMappingStrategy = IGNORE` (patch mantığı)
+    
+- `@AfterMapping` ile post-process.
+    
+
+---
+
+### 298) Asenkron 5 servis çağrısını tek yerde toplamak
+
+**Çekirdek fikir:** `CompletableFuture.supplyAsync` + `allOf` + **özel `Executor`** + **timeout/exception** yönetimi.
+
+```java
+var exec = Executors.newFixedThreadPool(8, r -> {
+  var t = new Thread(r); t.setName("io-pool-%d".formatted(t.threadId())); t.setDaemon(true); return t;
+});
+
+CompletableFuture<ResultA> f1 = supplyAsync(() -> s1.call(), exec).orTimeout(2, SECONDS);
+CompletableFuture<ResultB> f2 = supplyAsync(() -> s2.call(), exec).orTimeout(2, SECONDS);
+CompletableFuture<ResultC> f3 = supplyAsync(() -> s3.call(), exec).orTimeout(2, SECONDS);
+CompletableFuture<ResultD> f4 = supplyAsync(() -> s4.call(), exec).orTimeout(2, SECONDS);
+CompletableFuture<ResultE> f5 = supplyAsync(() -> s5.call(), exec).orTimeout(2, SECONDS);
+
+CompletableFuture<Void> all = allOf(f1,f2,f3,f4,f5);
+
+Aggregated res = all.handle((v, ex) -> {
+  // Centralized hata-toplama
+  var a = safeJoin(f1); var b = safeJoin(f2); var c = safeJoin(f3);
+  var d = safeJoin(f4); var e = safeJoin(f5);
+  return aggregate(a,b,c,d,e);
+}).join();
+```
+
+```java
+static <T> T safeJoin(CompletableFuture<T> f) {
+  try { return f.join(); } catch (CompletionException ce) { /* log + fallback */ return null; }
+}
+```
+
+**Notlar:**
+
+- I/O ağırlıklı ise thread sayısını çekinmeden artır; CPU-bound ise `ForkJoinPool`’u (varsayılan) tart.
+    
+- Gelişmiş hataya dayanıklılık için **Resilience4j** `Bulkhead/Retry/TimeLimiter` dekoratörleri ile sar.
+    
+- Spring `WebClient` kullanıyorsan `Mono.zip(f1,f2,...)` aynı işi reaktif tarzda yapar.
+    
+
+---
+
+### 299) Outbox Pattern
+
+**Sorun:** DB’ye yaz + mesaj kuyruğuna yayın = iki kaynak → **tutarsızlık**.  
+**Çözüm:** İşlemi tek transaction’da **DB + Outbox** tablosuna yaz. Ayrı bir publisher **Outbox’u okuyup** kuyruk/kafkaya **en az bir kez** (at-least-once) yollar.
+
+**Şema örneği:**
+
+```sql
+CREATE TABLE outbox (
+  id           UUID PRIMARY KEY,
+  aggregate_id UUID NOT NULL,
+  type         TEXT NOT NULL,          -- event type
+  payload      JSONB NOT NULL,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  published_at TIMESTAMPTZ,
+  status       TEXT NOT NULL DEFAULT 'NEW', -- NEW|SENT|FAILED
+  UNIQUE (id)
+);
+```
+
+**Akış:**
+
+1. Uygulama transaction’ında domain yazımı + `INSERT INTO outbox (...)`
+    
+2. Publisher (job/worker) `NEW` kayıtları **idempotent** şekilde okur, kuyruğa yollar.
+    
+3. Başarılıysa `status='SENT', published_at=now()` günceller; hata varsa `RETRY`/DLQ.
+    
+
+**İpuçları:**
+
+- Publisher **tam idempotent** olmalı (aynı event tekrar gelirse **no-op**).
+    
+- Alternatif: **CDC** (Debezium) → WAL’dan okur, uygulama kodu **sadeleşir**.
+    
+- Outbox tablosunu **partisyonla/temizle** (TTL/archival).
+    
+
+---
+
+### 300) Sonsuz döngü ne zaman tercih edilir (ve nasıl güvenli yazılır)?
+
+**Kullanım yerleri:** Queue consumer, dosya/dizin watcher, daemon görev, health/probe üreticisi.
+
+**Güvenli döngü şablonu:**
+
+```java
+class Worker implements AutoCloseable {
+  private final AtomicBoolean running = new AtomicBoolean(true);
+
+  public void start() {
+    while (running.get()) {
+      try {
+        processOneBatch();                 // iş
+        if (noWork()) LockSupport.parkNanos(MILLISECONDS.toNanos(100)); // backoff
+      } catch (TransientException e) {
+        LockSupport.parkNanos(MILLISECONDS.toNanos(200)); // jitter/backoff
+      } catch (Throwable t) {
+        // log & metric; kara delik olmasın
+      }
+      if (Thread.interrupted()) running.set(false); // cooperative stop
+    }
+  }
+
+  public void stop() { running.set(false); }
+  public void close() { stop(); }
+}
+```
+
+**Altın kurallar:**
+
+- **Stop sinyali** (volatile/AtomicBoolean).
+    
+- **Backoff** (sabit değil, jitter’lı) → CPU yakma.
+    
+- **Metrics & health**: iteration süresi, hata sayısı, queue lag.
+    
+- **Kapatma kancaları**: `PreDestroy`/`close()`.
+    
+
+**Alternatifler:** `ScheduledExecutorService`, reaktif akış (Project Reactor), K8s CronJob/Jobs.
+
+---
+
+### 301) OLTP, OLAP, Data Warehouse
+
+**OLTP (işlemsel)**
+
+- Kısa, sık; **INSERT/UPDATE/SELECT by PK**.
+    
+- Normalleştirilmiş şema; güçlü **ACID**.
+    
+- Örnek: Sipariş oluşturma, ödeme.
+    
+
+**OLAP (analitik)**
+
+- Büyük taramalar, gruplamalar; **read-heavy**.
+    
+- Denormalize/star şema; genelde kolon bazlı depolar.
+    
+- Örnek: Aylık satış analizi, kohort raporları.
+    
+
+**Data Warehouse (DWH)**
+
+- Çok kaynaktan veri **entegrasyonu**; tarihsel tutma.
+    
+- Şema: **Star/Snowflake**; ETL/ELT ile yüklenir.
+    
+- Motorlar: BigQuery, Snowflake, Redshift, ClickHouse, Druid…
+    
+
+**Mimarî notlar:**
+
+- OLTP → DWH akışı: **Change Data Capture** (CDC) ile gerçek-zamanlı besleme.
+    
+- Sıcak raporlar için **materialized view**/**rollup tablolar**.
+    
+- Bütçe: Sorgu başına fiyatlandırılan sistemlerde **partisyon + cluster key** şart.
+    
+
+---
+
+### 302) Circuit Breaker
+
+**Durumlar:**
+
+- **Closed:** Çağrılar normal; hata/slow oranı eşik aşarsa **Open**.
+    
+- **Open:** Çağrıları **kestir**; **waitDurationInOpenState** dolunca **Half-Open**.
+    
+- **Half-Open:** Sınırlı sayıda deneme; başarılıysa **Closed**, yoksa **Open**’a geri.
+    
+
+**Resilience4j ile kullanım (Java):**
+
+```java
+var cbConfig = CircuitBreakerConfig.custom()
+  .failureRateThreshold(50)                // %
+  .slowCallRateThreshold(50)               // %
+  .slowCallDurationThreshold(Duration.ofSeconds(2))
+  .slidingWindowType(COUNT_BASED)
+  .slidingWindowSize(100)
+  .minimumNumberOfCalls(50)
+  .waitDurationInOpenState(Duration.ofSeconds(10))
+  .permittedNumberOfCallsInHalfOpenState(5)
+  .recordExceptions(SocketTimeoutException.class, IOException.class)
+  .build();
+
+var cb = CircuitBreaker.of("downstreamA", cbConfig);
+Supplier<Response> guarded = CircuitBreaker
+  .decorateSupplier(cb, () -> client.call());
+
+// Opsiyonel: Retry/TimeLimiter/Bulkhead ile kombinle
+var retry = Retry.ofDefaults("downstreamA");
+var decorated = Retry.decorateSupplier(retry, guarded);
+
+Response res = Try.ofSupplier(decorated)
+                  .getOrElseGet(ex -> fallbackResponse());
+```
+
+**İpuçları:**
+
+- **Slow-call** oranını da izle; sadece “exception” değil.
+    
+- **Fallback** hafif ve hızlı olmalı (cache/son bilinen iyi değer).
+    
+- Breaker metriklerini dışa at: **Micrometer + Prometheus**.
